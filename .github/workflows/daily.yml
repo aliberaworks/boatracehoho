@@ -21,7 +21,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests beautifulsoup4 lxml numpy
+          pip install -r requirements.txt
 
       - name: Run daily prediction
         run: |
