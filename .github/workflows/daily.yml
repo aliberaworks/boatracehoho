@@ -1,0 +1,70 @@
+name: Daily Boat Race Prediction
+on:
+  schedule:
+    # 毎日 8:00 JST (23:00 UTC前日) に実行
+    - cron: '0 23 * * *'
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4 lxml numpy
+
+      - name: Run daily prediction
+        run: |
+          python -c "
+          from main import run_daily
+          import datetime
+          # 当日の日付
+          hd = datetime.datetime.now().strftime('%Y%m%d')
+          # 主要会場のみ（全24会場が開催しているわけではない）
+          run_daily(hd)
+          "
+
+      - name: Commit prediction data
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add public/data/
+          git diff --cached --quiet || git commit -m "Daily prediction: $(date +%Y%m%d)"
+          git push
+
+  deploy:
+    needs: predict
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./public
+
+  # newsletter:
+  #   needs: predict
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Send newsletter
+  #       run: |
+  #         # TODO: Claude API でコメント生成 → メール送信
+  #         echo "Newsletter sending not yet implemented"

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BoatRace Predictor - 1マーク旋回シミュレーション</title>
+    <meta name="description" content="物理シミュレーションに基づくボートレース予想システム。1マーク旋回の流体力学シミュレーションと3連単推奨舟券を提供。">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- ===== ヘッダー ===== -->
+    <header class="header">
+        <div class="header-inner">
+            <div class="logo">
+                <span class="logo-icon">🚤</span>
+                <h1>BoatRace<span class="accent">AI</span></h1>
+                <span class="badge">Physics Engine v1.0</span>
+            </div>
+            <nav class="nav">
+                <a href="#simulation" class="nav-link active">シミュレーション</a>
+                <a href="#prediction" class="nav-link">予想</a>
+                <a href="#strategy" class="nav-link">戦略</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <!-- ===== 入力パネル ===== -->
+        <section class="input-panel glass" id="input-panel">
+            <h2 class="section-title">
+                <span class="title-icon">📊</span>
+                レース情報入力
+            </h2>
+            <div class="input-grid">
+                <div class="input-group">
+                    <label for="exhibition-times">展示タイム（秒）</label>
+                    <div class="exhibition-inputs">
+                        <div class="boat-input" data-color="white">
+                            <span class="boat-num">1</span>
+                            <input type="number" step="0.01" value="6.78" id="ex-1" min="6.0" max="8.0">
+                        </div>
+                        <div class="boat-input" data-color="black">
+                            <span class="boat-num">2</span>
+                            <input type="number" step="0.01" value="6.82" id="ex-2" min="6.0" max="8.0">
+                        </div>
+                        <div class="boat-input" data-color="red">
+                            <span class="boat-num">3</span>
+                            <input type="number" step="0.01" value="6.85" id="ex-3" min="6.0" max="8.0">
+                        </div>
+                        <div class="boat-input" data-color="blue">
+                            <span class="boat-num">4</span>
+                            <input type="number" step="0.01" value="6.90" id="ex-4" min="6.0" max="8.0">
+                        </div>
+                        <div class="boat-input" data-color="yellow">
+                            <span class="boat-num">5</span>
+                            <input type="number" step="0.01" value="6.88" id="ex-5" min="6.0" max="8.0">
+                        </div>
+                        <div class="boat-input" data-color="green">
+                            <span class="boat-num">6</span>
+                            <input type="number" step="0.01" value="6.95" id="ex-6" min="6.0" max="8.0">
+                        </div>
+                    </div>
+                </div>
+                <div class="condition-inputs">
+                    <div class="input-group compact">
+                        <label for="wind-speed">風速 (m/s)</label>
+                        <input type="number" id="wind-speed" value="3.0" step="0.5" min="0" max="15">
+                    </div>
+                    <div class="input-group compact">
+                        <label for="wind-direction">風向</label>
+                        <select id="wind-direction">
+                            <option value="北" selected>北 ↓</option>
+                            <option value="北東">北東 ↙</option>
+                            <option value="東">東 ←</option>
+                            <option value="南東">南東 ↖</option>
+                            <option value="南">南 ↑</option>
+                            <option value="南西">南西 ↗</option>
+                            <option value="西">西 →</option>
+                            <option value="北西">北西 ↘</option>
+                        </select>
+                    </div>
+                    <div class="input-group compact">
+                        <label for="wave-height">波高 (cm)</label>
+                        <input type="number" id="wave-height" value="5" step="1" min="0" max="50">
+                    </div>
+                    <div class="input-group compact">
+                        <label for="water-temp">水温 (℃)</label>
+                        <input type="number" id="water-temp" value="15" step="1" min="0" max="40">
+                    </div>
+                </div>
+            </div>
+            <button class="btn-primary" id="run-sim-btn" onclick="runSimulation()">
+                <span class="btn-icon">⚡</span>
+                シミュレーション実行
+            </button>
+        </section>
+
+        <!-- ===== シミュレーション結果 ===== -->
+        <section class="result-panel" id="simulation" style="display:none;">
+            <!-- Canvas / 旋回ビジュアライゼーション -->
+            <div class="sim-visual glass" id="sim-visual">
+                <div class="sim-header">
+                    <h2 class="section-title">
+                        <span class="title-icon">🌊</span>
+                        1マーク旋回シミュレーション
+                    </h2>
+                    <div class="sim-controls">
+                        <button class="btn-icon-only" id="play-btn" onclick="togglePlayback()">▶</button>
+                        <button class="btn-icon-only" onclick="resetPlayback()">⏮</button>
+                        <input type="range" id="speed-slider" min="1" max="10" value="5" class="speed-slider">
+                        <span class="speed-label">速度: <span id="speed-val">5</span>x</span>
+                    </div>
+                </div>
+                <canvas id="sim-canvas" width="800" height="500"></canvas>
+                <div class="canvas-legend">
+                    <span class="legend-item" data-color="white">1号艇</span>
+                    <span class="legend-item" data-color="black">2号艇</span>
+                    <span class="legend-item" data-color="red">3号艇</span>
+                    <span class="legend-item" data-color="blue">4号艇</span>
+                    <span class="legend-item" data-color="yellow">5号艇</span>
+                    <span class="legend-item" data-color="green">6号艇</span>
+                </div>
+            </div>
+
+            <!-- 確度・条件 -->
+            <div class="info-cards">
+                <div class="card glass confidence-card">
+                    <h3>物理的確度</h3>
+                    <div class="confidence-ring" id="confidence-ring">
+                        <svg viewBox="0 0 120 120">
+                            <circle class="ring-bg" cx="60" cy="60" r="52"/>
+                            <circle class="ring-fg" cx="60" cy="60" r="52" id="conf-circle"/>
+                        </svg>
+                        <span class="confidence-val" id="confidence-val">0%</span>
+                    </div>
+                </div>
+                <div class="card glass conditions-card">
+                    <h3>コンディション</h3>
+                    <div class="condition-list" id="condition-list"></div>
+                </div>
+                <div class="card glass kimarite-card">
+                    <h3>決まり手予測</h3>
+                    <div class="kimarite-bars" id="kimarite-bars"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== 予想結果 ===== -->
+        <section class="prediction-panel" id="prediction" style="display:none;">
+            <h2 class="section-title">
+                <span class="title-icon">🎯</span>
+                3連単予想
+            </h2>
+            <div class="prediction-content">
+                <div class="finish-order glass">
+                    <h3>予測着順</h3>
+                    <div class="order-display" id="order-display"></div>
+                </div>
+                <div class="tickets glass">
+                    <h3>推奨舟券 <span class="total-budget" id="total-budget">(合計 ¥10,000)</span></h3>
+                    <div class="ticket-table" id="ticket-table"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== 戦略判断 ===== -->
+        <section class="strategy-panel glass" id="strategy" style="display:none;">
+            <h2 class="section-title">
+                <span class="title-icon">🧠</span>
+                戦略判断
+            </h2>
+            <div class="strategy-content" id="strategy-content"></div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>BoatRace AI Predictor © 2026 — 物理シミュレーション×統計分析による次世代競艇予想</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
