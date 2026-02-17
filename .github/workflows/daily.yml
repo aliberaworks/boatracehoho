@@ -8,6 +8,7 @@ on:
 jobs:
   predict:
     runs-on: ubuntu-latest
+    timeout-minutes: 30  # 30分でタイムアウト（2時間超え防止）
     
     steps:
       - name: Checkout
@@ -20,27 +21,39 @@ jobs:
           cache: 'pip'
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
       - name: Run daily prediction
+        run: python -c "from main import run_daily; run_daily()"
+
+      - name: Check file sizes
         run: |
-          python -c "
-          from main import run_daily
-          import datetime
-          # 当日の日付
-          hd = datetime.datetime.now().strftime('%Y%m%d')
-          # 主要会場のみ（全24会場が開催しているわけではない）
-          run_daily(hd)
-          "
+          echo "=== Data file sizes ==="
+          ls -lh public/data/ || echo "No data files"
+          
+          # 90MB以上のファイルがあれば除外
+          for f in public/data/*.json; do
+            if [ -f "$f" ]; then
+              size=$(stat -c%s "$f" 2>/dev/null || echo 0)
+              size_mb=$((size / 1024 / 1024))
+              echo "$f: ${size_mb}MB"
+              if [ "$size_mb" -gt 90 ]; then
+                echo "WARNING: $f is ${size_mb}MB (>90MB), removing to prevent push failure"
+                rm "$f"
+              fi
+            fi
+          done
 
       - name: Commit prediction data
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add public/data/
+          
+          # .gitignoreでデータは除外済みなので、-f で強制add
+          git add -f public/data/*.json 2>/dev/null || true
+          
           git diff --cached --quiet || git commit -m "Daily prediction: $(date +%Y%m%d)"
-          git push
+          git push || echo "Push failed, possibly due to file size"
 
   deploy:
     needs: predict
@@ -59,12 +72,3 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: ./public
-
-  # newsletter:
-  #   needs: predict
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Send newsletter
-  #       run: |
-  #         # TODO: Claude API でコメント生成 → メール送信
-  #         echo "Newsletter sending not yet implemented"

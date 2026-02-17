@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# venv
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Large data files (prevent accidental push of oversized JSONs)
+public/data/*.json
+!public/data/sample.json
+
+# Debug
+debug_*.py
+
+# Vercel
+.vercel/
