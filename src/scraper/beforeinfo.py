@@ -48,51 +48,16 @@ def scrape_beforeinfo(jcd: str, hd: str, rno: int) -> dict:
     }
     
     # --- 展示タイム取得 ---
-    # 展示タイムは tbody 内の各行に含まれる
-    tenji_table = soup.select("div.table1 table tbody")
-    if tenji_table:
-        rows = tenji_table[0].select("tr")
-        for row in rows:
-            # 展示タイムのセル
-            tenji_cell = row.select("td.is-fs14")
-            if tenji_cell:
-                time_text = tenji_cell[-1].get_text(strip=True)
-                result["exhibition_times"].append(safe_float(time_text))
-    
-    # フォールバック: bodyクラスからの抽出
-    if not result["exhibition_times"] or len(result["exhibition_times"]) < 6:
-        result["exhibition_times"] = []
-        # 別のセレクタパターン
-        body_rows = soup.select("div.grid.is-type2__multilabel table tbody tr")
-        for row in body_rows:
-            cells = row.select("td")
-            for cell in cells:
-                text = cell.get_text(strip=True)
-                # 展示タイムのパターン: 6.XX のような数値
-                match = re.search(r'(\d+\.\d{2})', text)
-                if match:
-                    val = safe_float(match.group(1))
-                    if 6.0 <= val <= 8.0:  # 展示タイムの妥当な範囲
-                        result["exhibition_times"].append(val)
-    
-    # さらにフォールバック: ページ全体から展示タイムを探す
-    if len(result["exhibition_times"]) < 6:
-        result["exhibition_times"] = []
-        all_text = soup.get_text()
-        # 展示タイムのパターンをグローバル検索
-        tenji_matches = re.findall(r'(?:展示タイム|テンジ)\s*[\s\S]*?(\d\.\d{2})', all_text)
-        if not tenji_matches:
-            # テーブル構造から直接探す
-            for td in soup.select("td"):
-                text = td.get_text(strip=True)
-                if re.match(r'^\d\.\d{2}$', text):
-                    val = safe_float(text)
-                    if 6.0 <= val <= 8.0:
-                        result["exhibition_times"].append(val)
-                        if len(result["exhibition_times"]) >= 6:
-                            break
-        else:
-            result["exhibition_times"] = [safe_float(t) for t in tenji_matches[:6]]
+    # 全 <td> から展示タイムのパターン (X.XX, 6.00~8.00) を直接探す
+    # 旧CSSセレクタ (td.is-fs14等) はboatrace.jpのHTML構造にマッチしないため廃止
+    for td in soup.select("td"):
+        text = td.get_text(strip=True)
+        if re.match(r'^\d\.\d{2}$', text):
+            val = safe_float(text)
+            if 6.0 <= val <= 8.0:
+                result["exhibition_times"].append(val)
+                if len(result["exhibition_times"]) >= 6:
+                    break
     
     # --- 水面気象情報 ---
     weather_section = soup.select("div.weather1")

@@ -15,8 +15,8 @@ import io
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Windows cp932対策
-if sys.stdout and hasattr(sys.stdout, 'buffer'):
+# Windows cp932対策（直接実行時のみ適用）
+if __name__ == "__main__":
     try:
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     except Exception:
