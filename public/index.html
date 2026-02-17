@@ -1,36 +1,73 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BoatRace Predictor - 1マーク旋回シミュレーション</title>
-    <meta name="description" content="物理シミュレーションに基づくボートレース予想システム。1マーク旋回の流体力学シミュレーションと3連単推奨舟券を提供。">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <title>BoatRace AI - 荒れレース予測ダッシュボード</title>
+    <meta name="description" content="物理シミュレーションに基づくボートレース予想システム。1号艇の勝率分析と荒れレース検出。">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-    <!-- ===== ヘッダー ===== -->
     <header class="header">
         <div class="header-inner">
             <div class="logo">
                 <span class="logo-icon">🚤</span>
                 <h1>BoatRace<span class="accent">AI</span></h1>
-                <span class="badge">Physics Engine v1.0</span>
+                <span class="badge">Physics Engine v2.0</span>
             </div>
             <nav class="nav">
-                <a href="#simulation" class="nav-link active">シミュレーション</a>
-                <a href="#prediction" class="nav-link">予想</a>
-                <a href="#strategy" class="nav-link">戦略</a>
+                <a href="#daily-dashboard" class="nav-link active">本日の予測</a>
+                <a href="#manual-sim" class="nav-link">手動シミュレーション</a>
             </nav>
         </div>
     </header>
 
     <main class="main">
-        <!-- ===== 入力パネル ===== -->
-        <section class="input-panel glass" id="input-panel">
+        <!-- ===== 本日の荒れレースダッシュボード ===== -->
+        <section class="dashboard-panel glass" id="daily-dashboard">
+            <div class="dashboard-header">
+                <h2 class="section-title">
+                    <span class="title-icon">🔥</span>
+                    本日の厳選荒れレース
+                </h2>
+                <div class="dashboard-meta" id="dashboard-meta">
+                    <span class="meta-date" id="meta-date">読み込み中...</span>
+                </div>
+            </div>
+
+            <!-- Stats summary -->
+            <div class="stats-bar" id="stats-bar" style="display:none;">
+                <div class="stat-item"><span class="stat-num" id="stat-scanned">0</span><span
+                        class="stat-label">スキャン</span></div>
+                <div class="stat-item tier1-bg"><span class="stat-num" id="stat-tier1">0</span><span
+                        class="stat-label">Tier 1</span></div>
+                <div class="stat-item tier2-bg"><span class="stat-num" id="stat-tier2">0</span><span
+                        class="stat-label">Tier 2</span></div>
+                <div class="stat-item"><span class="stat-num" id="stat-physics">0</span><span
+                        class="stat-label">物理異常</span></div>
+                <div class="stat-item"><span class="stat-num" id="stat-simulated">0</span><span
+                        class="stat-label">結果</span></div>
+            </div>
+
+            <!-- Race cards container -->
+            <div class="race-cards" id="race-cards">
+                <div class="loading-placeholder" id="loading-msg">
+                    <div class="spinner"></div>
+                    <p>最新の予測データを取得中...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== 手動シミュレーション ===== -->
+        <section class="input-panel glass" id="manual-sim">
             <h2 class="section-title">
                 <span class="title-icon">📊</span>
-                レース情報入力
+                手動シミュレーション
             </h2>
             <div class="input-grid">
                 <div class="input-group">
@@ -98,7 +135,6 @@
 
         <!-- ===== シミュレーション結果 ===== -->
         <section class="result-panel" id="simulation" style="display:none;">
-            <!-- Canvas / 旋回ビジュアライゼーション -->
             <div class="sim-visual glass" id="sim-visual">
                 <div class="sim-header">
                     <h2 class="section-title">
@@ -112,7 +148,9 @@
                         <span class="speed-label">速度: <span id="speed-val">5</span>x</span>
                     </div>
                 </div>
-                <canvas id="sim-canvas" width="800" height="500"></canvas>
+                <div class="canvas-container">
+                    <canvas id="sim-canvas" width="800" height="500"></canvas>
+                </div>
                 <div class="canvas-legend">
                     <span class="legend-item" data-color="white">1号艇</span>
                     <span class="legend-item" data-color="black">2号艇</span>
@@ -123,14 +161,13 @@
                 </div>
             </div>
 
-            <!-- 確度・条件 -->
             <div class="info-cards">
                 <div class="card glass confidence-card">
                     <h3>物理的確度</h3>
                     <div class="confidence-ring" id="confidence-ring">
                         <svg viewBox="0 0 120 120">
-                            <circle class="ring-bg" cx="60" cy="60" r="52"/>
-                            <circle class="ring-fg" cx="60" cy="60" r="52" id="conf-circle"/>
+                            <circle class="ring-bg" cx="60" cy="60" r="52" />
+                            <circle class="ring-fg" cx="60" cy="60" r="52" id="conf-circle" />
                         </svg>
                         <span class="confidence-val" id="confidence-val">0%</span>
                     </div>
@@ -175,9 +212,10 @@
     </main>
 
     <footer class="footer">
-        <p>BoatRace AI Predictor © 2026 — 物理シミュレーション×統計分析による次世代競艇予想</p>
+        <p>BoatRace AI Predictor &copy; 2026 &mdash; 物理シミュレーション&times;統計分析による次世代競艇予想</p>
     </footer>
 
     <script src="app.js"></script>
 </body>
+
 </html>

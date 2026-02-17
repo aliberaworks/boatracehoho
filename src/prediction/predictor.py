@@ -133,6 +133,9 @@ class Predictor:
         """
         シミュレーション結果から各3連単の確率を計算
         
+        温度付きソフトマックスで小さな速度差を増幅し、
+        実際の競艇に近い確率分布を生成する。
+        
         Args:
             sim_result: simulator.run() の結果
         Returns:
@@ -142,8 +145,8 @@ class Predictor:
         if len(boats) < 6:
             return {}
         
-        # 各艇のスコアを算出（出口速度 + 位置）
-        scores = {}
+        # 各艇のスコアを算出（出口速度 + 位置 + 膨らみ）
+        raw_scores = {}
         for boat in boats:
             bn = boat["boat_number"]
             exit_v = boat.get("exit_velocity", 0)
@@ -151,19 +154,23 @@ class Predictor:
             
             # スコア = 出口速度 - 膨らみペナルティ
             score = exit_v * 3.0 - max(0, spread - 1.0) * 10.0
-            scores[bn] = max(0.1, score)
+            raw_scores[bn] = max(0.1, score)
         
-        # ソフトマックスで確率に変換
-        total_score = sum(scores.values())
-        probs = {bn: s / total_score for bn, s in scores.items()}
+        # 温度付きソフトマックスで確率変換 (temperature=0.3 で差を増幅)
+        temperature = 0.3
+        max_score = max(raw_scores.values())
+        exp_scores = {}
+        for bn, s in raw_scores.items():
+            exp_scores[bn] = math.exp((s - max_score) / temperature)
+        exp_total = sum(exp_scores.values())
+        probs = {bn: e / exp_total for bn, e in exp_scores.items()}
         
-        # 3連単の全120通りの確率を概算
+        # 3連単の全120通りの確率を概算（条件付き確率）
         trifecta_probs = {}
         boat_nums = list(range(1, 7))
         
         for perm in permutations(boat_nums, 3):
             first, second, third = perm
-            # 簡易的な確率計算（各着の独立を仮定せず条件付き確率を使用）
             p_first = probs.get(first, 0.1)
             remaining_after_1st = {k: v for k, v in probs.items() if k != first}
             total_r1 = sum(remaining_after_1st.values())
